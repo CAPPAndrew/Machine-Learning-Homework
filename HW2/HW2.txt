@@ -1,0 +1,3 @@
+HW2, 4/17/2018
+
+Please find the detailed step by step writeup in the jupyter notebook enclosed within this folder. 
