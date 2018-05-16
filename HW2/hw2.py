@@ -37,11 +37,11 @@ def processing_drop(df, drop_list, maximum):
 	Credit_df
 	'''
 	for variable in drop_list:
-		credit_df = credit_df[credit_df['DebtRatio'] <= maximum]
+		df = credit_df[credit_df['DebtRatio'] <= maximum]
 	
-	return credit_df
+	return df
 
-def processing_mean(credit_df, list_to_mean):
+def processing_mean(df, list_to_mean):
 	'''
 	Fill in null values with the mean of the column.
 	Input:
@@ -52,11 +52,11 @@ def processing_mean(credit_df, list_to_mean):
 	'''
 	
 	for variable in list_to_mean:
-		credit_df[variable].fillna(credit_df[variable].mean(), inplace=True)
+		df[variable].fillna(df[variable].mean(), inplace=True)
 	
-	return credit_df
+	return df
 
-def processing_mult(credit_df, multiply_list, multiplier):
+def processing_mult(df, multiply_list, multiplier):
 	'''
 	Multiply all values in column by a multiplier
 	Input:
@@ -67,11 +67,11 @@ def processing_mult(credit_df, multiply_list, multiplier):
 	Credit_df
 	'''	
 	for variable in multiply_list:
-		credit_df[variable] = credit_df[variable].apply(lambda x: x * multiplier)
+		df[variable] = df[variable].apply(lambda x: x * multiplier)
 			
-	return credit_df
+	return df
 
-def exploration(credit_df):
+def exploration(df):
 	'''
 	Data exploration function - used to derive information about
 	the dataframe for analysis.
@@ -84,15 +84,15 @@ def exploration(credit_df):
 	Output:
 	Data_dictionary: A dictionary containing two entries, Column_Names and Summary_information
 	'''
-	summary_information = credit_df.describe()
-	header_list = list(credit_df)
+	summary_information = df.describe()
+	header_list = list(df)
 	data_dictionary = {}
 	data_dictionary["Summary Information"] = summary_information
 	data_dictionary["Column Names"] = header_list
 	
 	return data_dictionary
 
-def create_graph(credit_df, variable):
+def create_graph(df, variable):
 	'''
 	Take a variable and create a line chart mapping that variable
 	against a dependent_variable, serious delinquency in the prior two years
@@ -104,7 +104,7 @@ def create_graph(credit_df, variable):
 	'''
 	chart_size = (10, 5)
 	columns = [variable, 'SeriousDlqin2yrs']
-	mean_variable = credit_df[columns].groupby(variable).mean()
+	mean_variable = df[columns].groupby(variable).mean()
 	variable_chart = mean_variable.plot(kind = 'line',figsize = chart_size)
 	
 	plt.ylabel('Serious Delinquency in Past Two Years')
@@ -125,21 +125,21 @@ def bin_gen(credit_df, variable):
 	Outputs:
 	credit_df: A panda dataframe
 	'''
-	variable_min = credit_df[variable].describe()[3]
-	variable_25 = credit_df[variable].describe()[4]
-	variable_50 = credit_df[variable].describe()[5]
-	variable_75 = credit_df[variable].describe()[6]
-	variable_max = credit_df[variable].describe()[7]
+	variable_min = df[variable].describe()[3]
+	variable_25 = df[variable].describe()[4]
+	variable_50 = df[variable].describe()[5]
+	variable_75 = df[variable].describe()[6]
+	variable_max = df[variable].describe()[7]
 	
 	bin = [variable_min, variable_25, variable_50, variable_75, variable_max]
 	
 	bin_label = "Binned_" + variable
 	
-	credit_df[bin_label] = pd.cut(credit_df[variable], bins = bin, include_lowest = True, labels = [1, 2, 3, 4])
+	df[bin_label] = pd.cut(df[variable], bins = bin, include_lowest = True, labels = [1, 2, 3, 4])
 	
-	return credit_df
+	return df
 	
-def dummy_variable(binned_list, credit_df):
+def dummy_variable(binned_list, df):
 	'''
 	Using the binned columns, replace them with dummy columns.
 	Inputs:
@@ -148,11 +148,11 @@ def dummy_variable(binned_list, credit_df):
 	Outputs:
 	credit_df:A panda dataframe
 	'''
-	credit_df = pd.get_dummies(credit_df, columns = binned_list)
+	df = pd.get_dummies(df, columns = binned_list)
 	
-	return credit_df
+	return df
 
-def classifier(credit_df, variable, type_of_df):
+def classifier(df, variable, type_of_df):
 	'''
 	Takes the dataframe and runs a decision tree regression on it,
 	returning the score for the testing and training sets.
@@ -204,8 +204,8 @@ def classifier(credit_df, variable, type_of_df):
 	 
 	
 def execute_homework():
-	credit_df = form_dataset("credit-data.csv")
-	data_dictionary = exploration(credit_df)
+	df = form_dataset("credit-data.csv")
+	data_dictionary = exploration(df)
 	
 	print(data_dictionary["Summary Information"])
 	print(data_dictionary["Column Names"])
@@ -215,27 +215,27 @@ def execute_homework():
 	#	graph = create_graph(credit_df, chart)
 
 	drop_list = ['DebtRatio']
-	credit_df = processing_drop(credit_df, drop_list, 1)
+	credit_df = processing_drop(df, drop_list, 1)
 
-	print(credit_df[credit_df['DebtRatio'] > 1])
+	print(df[df['DebtRatio'] > 1])
 	
 	list_to_mean = ['MonthlyIncome', 'NumberOfDependents']
-	credit_df = processing_mean(credit_df, list_to_mean)
+	df = processing_mean(df, list_to_mean)
 	
 	multiply_list = ['DebtRatio', 'RevolvingUtilizationOfUnsecuredLines']
-	credit_df = processing_mult(credit_df, multiply_list, 100)
+	df = processing_mult(df, multiply_list, 100)
 	
-	print(credit_df.isna().any())
+	print(df.isna().any())
 
 	
 	categorical_list = ['RevolvingUtilizationOfUnsecuredLines', 'DebtRatio', 'MonthlyIncome', 'age']
 	binned_list = []
 	for variable in categorical_list:
-		credit_df = bin_gen(credit_df, variable)
+		df = bin_gen(credit_df, variable)
 		bin_label = "Binned_" + variable
 		binned_list.append(bin_label)
 	
-	print(list(credit_df))
+	print(list(df))
 	#credit_df = dummy_variable(binned_list, credit_df)
 	
 	classify_list = ['age', 'DebtRatio', 'MonthlyIncome']
@@ -243,7 +243,7 @@ def execute_homework():
 		classify_test, classify_train, classify_hat = classifier(credit_df, classify_variable, 'binned')
 		print(classify_test, classify_train, classify_variable)
 	
-	credit_df = dummy_variable(binned_list, credit_df)
+	credit_df = dummy_variable(binned_list, df)
 	
 	
 	
