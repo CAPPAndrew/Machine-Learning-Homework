@@ -92,7 +92,7 @@ def exploration(df):
 	
 	return data_dictionary
 
-def create_graph(df, variable):
+def create_graph(df, variable, column_title, y_label):
 	'''
 	Take a variable and create a line chart mapping that variable
 	against a dependent_variable, serious delinquency in the prior two years
@@ -103,11 +103,11 @@ def create_graph(df, variable):
 	Variable_chart: A matplotlib object of the resultant chart
 	'''
 	chart_size = (10, 5)
-	columns = [variable, 'SeriousDlqin2yrs']
+	columns = [variable, column_title]
 	mean_variable = df[columns].groupby(variable).mean()
 	variable_chart = mean_variable.plot(kind = 'line',figsize = chart_size)
 	
-	plt.ylabel('Serious Delinquency in Past Two Years')
+	plt.ylabel(ylabel)
 	plt.show()
 	
 	return variable_chart
