@@ -6,19 +6,26 @@ from sklearn import tree
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
 	
-def form_dataset(dataframe_string):
+def form_dataset(dataframe_string, filetype, row_num = None):
 	'''
 	Function reads the .csv file into a panda dataframe.
 	Inputs:
-	dataframe_string: String for .csv file
+	dataframe_string: String for file name
+	filetype: string for file_type
+	row_num: integer, number of rows to read if excel or csv
 	Outputs:
 	Credit_df = A panda dataframe
 	'''
-	credit_df = pd.read_csv(dataframe_string)
+	if filetype = 'string':
+		df = pd.read_csv(dataframe_string, nrows = row_num)
+	elif filetype = 'excel':
+		df = pd.read_excel(dataframe_string, nrows = row_num)
+	elif filetype = 'json':
+		df = pd.read_json(dataframe_string)
 	
-	return credit_df
+	return df
 
-def processing_drop(credit_df, drop_list, maximum):
+def processing_drop(df, drop_list, maximum):
 	'''
 	1) Drops all rows where the 'DebtRatio' value is greater than 1
 	It is a percentage, so these values are anomalous.
