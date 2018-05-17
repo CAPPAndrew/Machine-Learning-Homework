@@ -2,9 +2,7 @@ import csv
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn import tree
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
+
 	
 def form_dataset(dataframe_string, row_num = None):
 	'''
@@ -16,13 +14,14 @@ def form_dataset(dataframe_string, row_num = None):
 	Outputs:
 	Credit_df = A panda dataframe
 	'''
-	if filetype = 'string':
-		df = pd.read_csv(dataframe_string, nrows = row_num)
-	elif filetype = 'excel':
-		df = pd.read_excel(dataframe_string, nrows = row_num)
-	elif filetype = 'json':
+	if '.csv' in dataframe_string:
+		df = pd.read_csv(dataframe_string, nrows = row_num, index_col = 0)
+	elif '.xls' in dataframe_string:
+		df = pd.read_excel(dataframe_string, nrows = row_num, index_col = 0)
+	elif '.json' in dataframe_string:
 		df = pd.read_json(dataframe_string)
 	
+	print("Loaded" + dataframe_string)
 	return df
 
 def exploration(df):
@@ -83,6 +82,7 @@ def processing_mean(df, list_to_mean, operation_type, value = None):
 	
 	return df
 
+
 def processing_mult(df, multiply_list, multiplier):
 	'''
 	Multiply all values in column by a multiplier
@@ -98,7 +98,18 @@ def processing_mult(df, multiply_list, multiplier):
 			
 	return df
 
+def outlier(df,variable):
 
+    low_out = df[col_name].quantile(0.005)
+    high_out = df[col_name].quantile(0.095)
+    df_changed = df.loc[(df[variable] > low_out) & (df[variable] < high_out)]
+
+    number_removed = df.shape[0] - df_out.shape[0]
+    print("Removed" + num "outliers from" + variable)
+	
+    return df_changed
+
+	
 def create_graph(df, variable, column_title, y_label):
 	'''
 	Take a variable and create a line chart mapping that variable
@@ -119,7 +130,7 @@ def create_graph(df, variable, column_title, y_label):
 	
 	return variable_chart
 
-def bin_gen(credit_df, variable, label, fix_value):
+def bin_gen(df, variable, label, fix_value):
 	'''
 	Create a bin column for a given variable, derived by using the 
 	description of the column to determine the min, 25, 50, 75 and max
@@ -148,101 +159,26 @@ def bin_gen(credit_df, variable, label, fix_value):
 		bin_label = variable + label
 	
 	df[bin_label] = pd.cut(df[variable], bins = bin, include_lowest = True, labels = [1, 2, 3, 4])
+	df.drop([variable], inplace = True, axis=1)
 	
 	return df
 	
-def dummy_variable(binned_list, df):
+def dummy_variable(variable, df):
 	'''
 	Using the binned columns, replace them with dummy columns.
 	Inputs:
-	credit_df: A panda dataframe
-	binned_list: A list of column headings for binned variables
+	df: A panda dataframe
+	variable: A list of column headings for binned variables
 	Outputs:
 	credit_df:A panda dataframe
 	'''
-	df = pd.get_dummies(df, columns = binned_list)
+    dummy_df = pd.get_dummies(df[col]).rename(columns = lambda x: str(variable)+ str(x))
+    df = pd.concat([df, dummy_df], axis=1)
 	
-	return df
+    df.drop([variable], inplace = True, axis=1)
+	
+    return df
 
-def classifier(x, y, threshold, classifier,):
-	'''
-	Takes the dataframe and runs a decision tree regression on it,
-	returning the score for the testing and training sets.
-	Removes the variable and binned_variable from the variables being used
-	as y.
-
-	Inputs:
-	credit_df: A panda dataframe
-	variable: A string, which is a column in credit_df
-	type_of_df: A string, either binned or dummy, describing which columns in the df are being used.
-	Outputs:
-	x,y test score and x,y train score
-	'''
-
-
-	
-	x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.4, random_state = 32)
-	
-	tree_model = tree.DecisionTreeRegressor()
-	tree_model = tree_model.fit(x_train, y_train)
-	predicted_y = tree_model.predict(x_test)
-
-	plt.scatter(y_test, predicted_y)
-	plt.xlabel("True "+ variable)
-	plt.ylabel("Predicted "+ variable)
-	plt.axis()
-	plt.show()
-	
-	threshold = 0.5
-	print("Accuracy Score:", accuracy_score(y_test, predicted_y > threshold))
-	
-	print("Confusion Matrix:", confusion_matrix(y_test, predicted_y > threshold))
-	
-	return(tree_model.score(x_test, y_test), tree_model.score(x_train, y_train), predicted_y)
-	 
-	
-def execute_homework():
-	df = form_dataset("credit-data.csv")
-	data_dictionary = exploration(df)
-	
-	print(data_dictionary["Summary Information"])
-	print(data_dictionary["Column Names"])
-	
-	chart_list = ['NumberOfOpenCreditLinesAndLoans', 'NumberOfDependents', 'age', 'MonthlyIncome']
-	#for chart in chart_list:
-	#	graph = create_graph(credit_df, chart)
-
-	drop_list = ['DebtRatio']
-	credit_df = processing_drop(df, drop_list, 1)
-
-	print(df[df['DebtRatio'] > 1])
-	
-	list_to_mean = ['MonthlyIncome', 'NumberOfDependents']
-	df = processing_mean(df, list_to_mean)
-	
-	multiply_list = ['DebtRatio', 'RevolvingUtilizationOfUnsecuredLines']
-	df = processing_mult(df, multiply_list, 100)
-	
-	print(df.isna().any())
-
-	
-	categorical_list = ['RevolvingUtilizationOfUnsecuredLines', 'DebtRatio', 'MonthlyIncome', 'age']
-	binned_list = []
-	for variable in categorical_list:
-		df = bin_gen(credit_df, variable)
-		bin_label = "Binned_" + variable
-		binned_list.append(bin_label)
-	
-	print(list(df))
-	#credit_df = dummy_variable(binned_list, credit_df)
-	
-	classify_list = ['age', 'DebtRatio', 'MonthlyIncome']
-	for classify_variable in classify_list:
-		classify_test, classify_train, classify_hat = classifier(credit_df, classify_variable, 'binned')
-		print(classify_test, classify_train, classify_variable)
-	
-	credit_df = dummy_variable(binned_list, df)
-	
 	
 	
 	
