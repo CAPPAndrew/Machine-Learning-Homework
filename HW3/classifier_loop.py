@@ -71,7 +71,7 @@ def clf_loop(x, y, models):
 				duration = end - start
 
 				results_df = pd.DataFrame(columns=('model_type','parameters', 'duration', 'accuracy','Average Precision Score', 'Precision at 5', 'Precision at 10', 'Precision at 15'))
-                results_df.loc[iterator] = [models[index], x, duration, accuracy, average_precision_score(y_test, y_hat),
+				results_df.loc[iterator] = [models[index], x, duration, accuracy, average_precision_score(y_test, y_hat),
 				precision_at_k(y_test_sorted,y_pred_probs_sorted,5.0),
 				precision_at_k(y_test_sorted,y_pred_probs_sorted,10.0),
 				precision_at_k(y_test_sorted,y_pred_probs_sorted,20.0)]
