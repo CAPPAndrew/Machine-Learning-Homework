@@ -1,191 +1,114 @@
-import csv
+#Code Based on Rayid Ghani's Magic Loop: https://github.com/rayidghani/magicloops/blob/master/simpleloop.py
+
 import pandas as pd
 import numpy as np
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.model_selection import train_test_split, ParameterGrid
+from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, AdaBoostClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import *
 import matplotlib.pyplot as plt
+import time
+import seaborn as sns
+import random
+import pylab as pl
 
-	
-def form_dataset(dataframe_string, row_num = None):
+def establish_grid():
 	'''
-	Function reads the .csv file into a panda dataframe.
+	Establish grid parameters
+	'''
+grid = {'Forest':{'n_estimators': [10,100], 'max_depth': [1,5], 'max_features': ['sqrt','log2'],'min_samples_split': [2,5]},
+    'Tree': {'criterion': ['gini', 'entropy'], 'max_depth': [1,5,10,20,50,100],'min_samples_split': [2,5,10]},
+    'Bagging':{'n_estimators    ':[1,10,20,50], 'max_samples':[5,10], 'max_features': [5,10]},
+    'KNN' :{'n_neighbors': [1,10,50,100],'weights': ['uniform','distance'],'algorithm': ['auto','ball_tree','kd_tree']}
+    'Boosted': {'algorithm': ['SAMME', 'SAMME.R'], 'n_estimators': [1,10,100,1000]},
+    'Logit': {'penalty': ['l1','l2'], 'C': [0.001,0.01,0.1,1,10]},
+    'SVM' :{'C' :[0.01,0.1,1,10],'kernel':['linear']},
+    }
+
+def establish_classifiers():
+	'''
+	Establish classifiers
+	'''
+	classifiers = {'Forest': RandomForestClassifier(),
+		'Tree': DecisionTreeClassifier(),
+		'Bagging': BaggingClassifier(),
+		'KNN': KNeighborsClassifier() 
+		'Boosted': AdaBoostClassifier(DecisionTreeClassifier(max_depth=1)),
+		'Logit': LogisticRegression(),
+		'SVM': SVC(probability=True, random_state=0),
+		}
+
+
+def scores_at_k(y_true, y_scores, k):
+    '''
+    For a given level of k, calculate corresponding
+    precision, recall, and f1 scores.
+    '''
+    preds_at_k = generate_binary_at_k(y_scores, k)
+    precision = precision_score(y_true, preds_at_k)
+    recall = recall_score(y_true, preds_at_k)
+    f1 = f1_score(y_true, preds_at_k)
+	
+    return precision, recall, f1
+
+def clf_loop(x, y, models):
+    '''
+	Perform classifiers on given x and y inputs.
 	Inputs:
-	dataframe_string: String for file name
-	filetype: string for file_type
-	row_num: integer, number of rows to read if excel or csv
-	Outputs:
-	df = A panda dataframe
-	'''
-	if '.csv' in dataframe_string:
-		df = pd.read_csv(dataframe_string, nrows = row_num, index_col = 0)
-	elif '.xls' in dataframe_string:
-		df = pd.read_excel(dataframe_string, nrows = row_num, index_col = 0)
-	elif '.json' in dataframe_string:
-		df = pd.read_json(dataframe_string)
+	x = variable
+	y = Subject variables
+	models = list of models to use
+    '''
+	if models = 'all':
+		models = ['Forest', 'Tree', 'Bagging', 'KNN', 'Boosted', 'Logit', 'SVM']
+	iterator = 0
+    
+	x_train, x_test, y_train, y_test = train_test_split(X, y, test_size = 0.4 , random_state = 32)
 	
-	print("Loaded" + dataframe_string)
-	return df
+    for index , classifier in enumerate([classifiers[x] for x in models]):
+		parameters = grid[models[index]]
+        for x in ParameterGrid(parameter_values):
+            try:
+                start = time.time()
+				iterator += 1
+                classifier.set_params(** x)
+				accuracy = classifier.score(x_test, y_test)
+                y_hat = classifier.fit(x_train, y_train).predict_proba(x_test)[:,1]
 
-def exploration(df):
-	'''
-	Data exploration function - used to derive information about
-	the dataframe for analysis.
-	We seperate this information into two main categories,
-	Summary_information, which is a description of the dataframe
-	Column_Names, which is a list of column headers in the dataframe
-	These are stored in a dictionary.
-	Input:
-	df: A panda dataframe
-	Output:
-	Data_dictionary: A dictionary containing two entries, Column_Names and Summary_information
-	'''
-	summary_information = df.describe()
-	header_list = list(df)
-	data_dictionary = {}
-	data_dictionary["Summary Information"] = summary_information
-	data_dictionary["Column Names"] = header_list
+                end = time.time()
+				duration = end - start
+
+				results_df = pd.DataFrame(columns=('model_type','parameters', 'duration', 'accuracy','Average Precision Score', 'AUC ROC Score', 'Precision at 5', 'Precision at 10', 'Precision at 15'))
+				results_df.loc[iterator] = [models[index], x, duration, accuracy, average_precision_score(y_test, y_hat),
+				roc_auc_score(y_test, y_pred_probs),
+				precision_at_k(y_test_sorted,y_pred_probs_sorted,5.0),
+				precision_at_k(y_test_sorted,y_pred_probs_sorted,10.0),
+				precision_at_k(y_test_sorted,y_pred_probs_sorted,20.0)]
+				
+				create_precision_recall_graph(y_true,y_hat, models[index], x)
+
+            except IndexError:
+                continue
+				
+    return results_df
 	
-	return data_dictionary
 
+def create_precision_recall_graph(y_true, y_hat, model, parameter):
+    '''
+	Create a precision recall graph based on given values and label it based on the model and parameters.
+    '''
+    precision, recall, thresholds = precision_recall_curve(y_true, y_hat)   
 	
-def processing_drop(df, drop_list, target_quantifier, value):
-	'''
-	1) Drops all rows where the variables in the drop_list value where the target is less than, greater than, or equal to a value.
-	Input:
-	df: A panda dataframe
-	drop_list: List of columns to act on
-	maximum: The integer to drop if the value is greater than
-	Outputs:
-	df
-	'''
-	for variable in drop_list:
-		if target_quantifier == 'equal':
-			df = df[df[variable] == value]
-		elif target_quantifier == 'greater':
-			df = df[df[variable] >= value]
-		elif target_quantifier == 'lesser':
-			df = df[df[variable] <= value]
-	
-	return df
-
-def processing_mean(df, list_to_mean, operation_type, value = None):
-	'''
-	Fill in null values with the mean of the column.
-	Input:
-	df: A panda dataframe
-	list_to_mean: List of columns to act on
-	Outputs:
-	df
-	'''
-	
-	for variable in list_to_mean:
-		if operation_type == 'mean'
-			df[variable].fillna(df[variable].mean(), inplace=True)
-		elif operation_type == 'median':
-			df[variable].fillna(df[variable].median(), inplace=True)
-		elif operation_type == 'set':
-			df[variable].fillna(value, inplace=True)
-	
-	return df
-
-
-def processing_mult(df, multiply_list, multiplier):
-	'''
-	Multiply all values in column by a multiplier
-	Input:
-	df: A panda dataframe
-	multiply_list: List of columns to act on
-	multiplier: The number to multiply each value by
-	Outputs:
-	df
-	'''	
-	for variable in multiply_list:
-		df[variable] = df[variable].apply(lambda x: x * multiplier)
-			
-	return df
-
-def outlier(df,variable):
-
-    low_out = df[col_name].quantile(0.005)
-    high_out = df[col_name].quantile(0.095)
-    df_changed = df.loc[(df[variable] > low_out) & (df[variable] < high_out)]
-
-    number_removed = df.shape[0] - df_out.shape[0]
-    print("Removed" + num "outliers from" + variable)
-	
-    return df_changed
-
-	
-def create_graph(df, variable, column_title, y_label):
-	'''
-	Take a variable and create a line chart mapping that variable
-	against a dependent_variable, serious delinquency in the prior two years
-	Inputs:
-	df: A panda dataframe
-	variable: A string, which is a column in df
-	Outputs:
-	Variable_chart: A matplotlib object of the resultant chart
-	'''
-	chart_size = (10, 5)
-	columns = [variable, column_title]
-	mean_variable = df[columns].groupby(variable).mean()
-	variable_chart = mean_variable.plot(kind = 'line',figsize = chart_size)
-	
-	plt.ylabel(ylabel)
+    plt.clf()
+    plt.plot(recall, precision, color='blue', label = 'Precision Recall curve')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.ylim([0, 1])
+    plt.xlim([0, 1])
+    plt.title('Graph of Precision Recall Curve for {} on {}'.format(model, parameter))
+    plt.legend()
+    
 	plt.show()
-	
-	return variable_chart
-
-def bin_gen(df, variable, label, fix_value):
-	'''
-	Create a bin column for a given variable, derived by using the 
-	description of the column to determine the min, 25, 50, 75 and max
-	of the column. Then categorize each value in the original variable's
-	column in the new column, labeled binned_<variable>, with 1,2,3,4
-	Ranging from min to max
-	Inputs:
-	df: A panda dataframe
-	variable: A string, which is a column in df
-	label: A string
-	fix_value: Either prefix or suffix
-	Outputs:
-	df: A panda dataframe
-	'''
-	variable_min = df[variable].min()
-	variable_25 = df[variable].quantile(q = 0.25)
-	variable_50 = df[variable].quantile(q = 0.50)
-	variable_75 = df[variable].quantile(q = 0.75)
-	variable_max = df[variable].max()
-	
-	bin = [variable_min, variable_25, variable_50, variable_75, variable_max]
-	
-	if fix_value = 'prefix':
-		bin_label = label + variable
-	elif fix_value = 'suffix':
-		bin_label = variable + label
-	
-	df[bin_label] = pd.cut(df[variable], bins = bin, include_lowest = True, labels = [1, 2, 3, 4])
-	df.drop([variable], inplace = True, axis=1)
-	
-	return df
-	
-def dummy_variable(variable, df):
-	'''
-	Using the binned columns, replace them with dummy columns.
-	Inputs:
-	df: A panda dataframe
-	variable: A list of column headings for binned variables
-	Outputs:
-	df:A panda dataframe
-	'''
-    dummy_df = pd.get_dummies(df[col]).rename(columns = lambda x: str(variable)+ str(x))
-    df = pd.concat([df, dummy_df], axis=1)
-	
-    df.drop([variable], inplace = True, axis=1)
-	
-    return df
-
-	
-	
-	
-	
-	
-	
