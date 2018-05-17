@@ -1,4 +1,4 @@
-#Code Based on Rayid Ghani's Magic Loop: https://github.com/rayidghani/magicloops/blob/master/magicloop.py
+#Code Based on Rayid Ghani's Magic Loop: https://github.com/rayidghani/magicloops/blob/master/simpleloop.py
 
 import pandas as pd
 import numpy as np
@@ -17,8 +17,8 @@ import pylab as pl
 
 def establish_grid():
 
-grid = {'Forest':{'n_estimators': [10,100], 'max_depth': [5,50], 'max_features': ['sqrt','log2'],'min_samples_split': [2,10]},
-    'Tree': {'criterion': ['gini', 'entropy'], 'max_depth': [5,10,20,50], 'max_features': ['sqrt','log2'],'min_samples_split': [2,5]},
+grid = {'Forest':{'n_estimators': [10,100], 'max_depth': [1,5], 'max_features': ['sqrt','log2'],'min_samples_split': [2,5]},
+    'Tree': {'criterion': ['gini', 'entropy'], 'max_depth': [1,5,10,20,50,100],'min_samples_split': [2,5,10]},
     'Bagging':{'n_estimators    ':[1,10,20,50], 'max_samples':[5,10], 'max_features': [5,10]},
     'KNN' :{'n_neighbors': [1,10,50,100],'weights': ['uniform','distance'],'algorithm': ['auto','ball_tree','kd_tree']}
     'Boosted': {'algorithm': ['SAMME', 'SAMME.R'], 'n_estimators': [1,10,100,1000]},
@@ -47,6 +47,7 @@ def scores_at_k(y_true, y_scores, k):
     precision = precision_score(y_true, preds_at_k)
     recall = recall_score(y_true, preds_at_k)
     f1 = f1_score(y_true, preds_at_k)
+	
     return precision, recall, f1
 
 def clf_loop(x, y, models):
@@ -69,8 +70,11 @@ def clf_loop(x, y, models):
                 end = time.time()
 				duration = end - start
 
-				results_df = pd.DataFrame(columns=('model_type','parameters', 'duration', 'accuracy','Average Precision Score'))
-                results_df.loc[iterator] = [models[index], x, duration, accuracy, average_precision_score(y_test, y_hat)]
+				results_df = pd.DataFrame(columns=('model_type','parameters', 'duration', 'accuracy','Average Precision Score', 'Precision at 5', 'Precision at 10', 'Precision at 15'))
+                results_df.loc[iterator] = [models[index], x, duration, accuracy, average_precision_score(y_test, y_hat),
+				precision_at_k(y_test_sorted,y_pred_probs_sorted,5.0),
+				precision_at_k(y_test_sorted,y_pred_probs_sorted,10.0),
+				precision_at_k(y_test_sorted,y_pred_probs_sorted,20.0)]
 				
 				create_precision_recall_graph(y_true,y_hat, models[index], x)
 
