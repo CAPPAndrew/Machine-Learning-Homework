@@ -16,99 +16,93 @@ import random
 import pylab as pl
 
 def establish_grid():
-	'''
-	Establish grid parameters
-	'''
-grid = {'Forest':{'n_estimators': [10,100], 'max_depth': [1,5], 'max_features': ['sqrt','log2'],'min_samples_split': [2,5]},
-    'Tree': {'criterion': ['gini', 'entropy'], 'max_depth': [1,5,10,20,50,100],'min_samples_split': [2,5,10]},
-    'Bagging':{'n_estimators    ':[1,10,20,50], 'max_samples':[5,10], 'max_features': [5,10]},
-    'KNN' :{'n_neighbors': [1,10,50,100],'weights': ['uniform','distance'],'algorithm': ['auto','ball_tree','kd_tree']}
-    'Boosted': {'algorithm': ['SAMME', 'SAMME.R'], 'n_estimators': [1,10,100,1000]},
-    'Logit': {'penalty': ['l1','l2'], 'C': [0.001,0.01,0.1,1,10]},
-    'SVM' :{'C' :[0.01,0.1,1,10],'kernel':['linear']},
-    }
-
-def establish_classifiers():
+	grid = {'Forest':{'n_estimators': [10,100], 'max_depth': [1,5], 'max_features': ['sqrt','log2'],'min_samples_split': [2,5]},
+	'Tree': {'criterion': ['gini', 'entropy'], 'max_depth': [1,5,10,20,50,100],'min_samples_split': [2,5,10]},
+	'KNN' :{'n_neighbors': [1,50],'weights': ['uniform','distance'],'algorithm': ['auto']},
+	'Boosted' : {'algorithm': ['SAMME', 'SAMME.R'], 'n_estimators': [1,10,100,1000]},
+	'Logit': {'penalty': ['l1','l2'], 'C': [0.001,0.01,0.1,1,10]},
+	'SVM' :{'C' :[0.01,0.1,1,10],'kernel':['linear']}
+	}
+	
+	return grid
+def establish_classifiers():
 	'''
 	Establish classifiers
 	'''
 	classifiers = {'Forest': RandomForestClassifier(),
 		'Tree': DecisionTreeClassifier(),
-		'Bagging': BaggingClassifier(),
-		'KNN': KNeighborsClassifier() 
+		'KNN': KNeighborsClassifier(),
 		'Boosted': AdaBoostClassifier(DecisionTreeClassifier(max_depth=1)),
 		'Logit': LogisticRegression(),
 		'SVM': SVC(probability=True, random_state=0),
 		}
-
-
-def scores_at_k(y_true, y_scores, k):
-    '''
-    For a given level of k, calculate corresponding
-    precision, recall, and f1 scores.
-    '''
-    preds_at_k = generate_binary_at_k(y_scores, k)
-    precision = precision_score(y_true, preds_at_k)
-    recall = recall_score(y_true, preds_at_k)
-    f1 = f1_score(y_true, preds_at_k)
 	
-    return precision, recall, f1
+	return classifiers
 
-def clf_loop(x, y, models):
+def generate_binary_at_k(y_scores, k):
     '''
+    Set first k% as 1, the rest as 0.
+    '''
+	cutoff_index = int(len(y_scores) * (k / 100.0))
+	test_predictions_binary = [1 if x < cutoff_index else 0 for x in range(len(y_scores))]
+	return test_predictions_binary
+	
+def clf_loop(x, y, models, grid, classifiers):
+	'''
 	Perform classifiers on given x and y inputs.
 	Inputs:
 	x = variable
 	y = Subject variables
 	models = list of models to use
-    '''
-	if models = 'all':
-		models = ['Forest', 'Tree', 'Bagging', 'KNN', 'Boosted', 'Logit', 'SVM']
-	iterator = 0
+	'''
+	if models == 'all':
+		models = ['Forest', 'Tree', 'KNN', 'Boosted', 'Logit', 'SVM']
+	iterator = -1
     
-	x_train, x_test, y_train, y_test = train_test_split(X, y, test_size = 0.4 , random_state = 32)
+	x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2 , random_state = 12)
 	
-    for index , classifier in enumerate([classifiers[x] for x in models]):
+	results_df = pd.DataFrame(columns=('model_type','parameters', 'duration', 'accuracy','Average Precision Score', 'AUC ROC Score'))
+
+	
+	for index , classifier in enumerate([classifiers[x] for x in models]):
 		parameters = grid[models[index]]
-        for x in ParameterGrid(parameter_values):
-            try:
-                start = time.time()
+		for x in ParameterGrid(parameters):
+			try:
+				start = time.time()
 				iterator += 1
-                classifier.set_params(** x)
+				classifier.set_params(** x)
+
+				y_hat = classifier.fit(x_train, y_train.values.ravel()).predict_proba(x_test)[:,1]
+				
+				end = time.time()
+				
 				accuracy = classifier.score(x_test, y_test)
-                y_hat = classifier.fit(x_train, y_train).predict_proba(x_test)[:,1]
-
-                end = time.time()
 				duration = end - start
-
-				results_df = pd.DataFrame(columns=('model_type','parameters', 'duration', 'accuracy','Average Precision Score', 'AUC ROC Score', 'Precision at 5', 'Precision at 10', 'Precision at 15'))
+				
 				results_df.loc[iterator] = [models[index], x, duration, accuracy, average_precision_score(y_test, y_hat),
-				roc_auc_score(y_test, y_pred_probs),
-				precision_at_k(y_test_sorted,y_pred_probs_sorted,5.0),
-				precision_at_k(y_test_sorted,y_pred_probs_sorted,10.0),
-				precision_at_k(y_test_sorted,y_pred_probs_sorted,20.0)]
-				
-				create_precision_recall_graph(y_true,y_hat, models[index], x)
+				roc_auc_score(y_test, y_hat)]
 
-            except IndexError:
-                continue
+				create_precision_recall_graph(y_test,y_hat, models[index], x)
+
+			except IndexError:
+				continue
 				
-    return results_df
+	return results_df
 	
 
 def create_precision_recall_graph(y_true, y_hat, model, parameter):
-    '''
+	'''
 	Create a precision recall graph based on given values and label it based on the model and parameters.
-    '''
-    precision, recall, thresholds = precision_recall_curve(y_true, y_hat)   
-	
-    plt.clf()
-    plt.plot(recall, precision, color='blue', label = 'Precision Recall curve')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.ylim([0, 1])
-    plt.xlim([0, 1])
-    plt.title('Graph of Precision Recall Curve for {} on {}'.format(model, parameter))
-    plt.legend()
-    
+	'''
+	precision, recall, thresholds = precision_recall_curve(y_true, y_hat)   
+
+	plt.clf()
+	plt.plot(recall, precision, color='blue', label = 'Precision Recall curve')
+	plt.xlabel('Recall')
+	plt.ylabel('Precision')
+	plt.ylim([0, 1])
+	plt.xlim([0, 1])
+	plt.title('Graph of Precision Recall Curve for {} on {}'.format(model, parameter))
+	plt.legend()
+
 	plt.show()
