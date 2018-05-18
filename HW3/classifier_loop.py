@@ -19,16 +19,13 @@ def establish_grid():
 	grid = {'Forest':{'n_estimators': [10,100], 'max_depth': [1,5], 'max_features': ['sqrt','log2'],'min_samples_split': [2,5]},
 	'Tree': {'criterion': ['gini', 'entropy'], 'max_depth': [1,5,10,20,50,100],'min_samples_split': [2,5,10]},
 	'KNN' :{'n_neighbors': [1,50],'weights': ['uniform','distance'],'algorithm': ['auto']},
-	'Boosted' : {'algorithm': ['SAMME', 'SAMME.R'], 'n_estimators': [1,10,100,1000]},
+	'Boosted' : {'algorithm': ['SAMME'], 'n_estimators': [1,10,100,1000]},
 	'Logit': {'penalty': ['l1','l2'], 'C': [0.001,0.01,0.1,1,10]},
-	'SVM' :{'C' :[0.01,0.1,1,10],'kernel':['linear']}
+	'SVM' :{'C' :[0.1,1],'kernel':['linear']}
 	}
 	
 	return grid
 def establish_classifiers():
-	'''
-	Establish classifiers
-	'''
 	classifiers = {'Forest': RandomForestClassifier(),
 		'Tree': DecisionTreeClassifier(),
 		'KNN': KNeighborsClassifier(),
@@ -38,14 +35,6 @@ def establish_grid():
 		}
 	
 	return classifiers
-
-def generate_binary_at_k(y_scores, k):
-    '''
-    Set first k% as 1, the rest as 0.
-    '''
-	cutoff_index = int(len(y_scores) * (k / 100.0))
-	test_predictions_binary = [1 if x < cutoff_index else 0 for x in range(len(y_scores))]
-	return test_predictions_binary
 	
 def clf_loop(x, y, models, grid, classifiers):
 	'''

@@ -68,7 +68,7 @@ def processing_drop(df, drop_list, target_quantifier, value):
 
 def processing_mean(df, list_to_mean, operation_type, value = None):
 	'''
-	Fill in null values with the mean of the column.
+	Fill in null values with the mean, median or a set value of the column.
 	Input:
 	df: A panda dataframe
 	list_to_mean: List of columns to act on
@@ -103,18 +103,20 @@ def processing_mult(df, multiply_list, multiplier):
 	return df
 
 def outlier(df, variable):
+	'''
+	Locate outliers in given column and eliminate them
+	'''
+	low_out = df[variable].quantile(0.005)
+	high_out = df[variable].quantile(0.995)
+	df_changed = df.loc[(df[variable] > low_out) & (df[variable] < high_out)]
 
-    low_out = df[col_name].quantile(0.005)
-    high_out = df[col_name].quantile(0.095)
-    df_changed = df.loc[(df[variable] > low_out) & (df[variable] < high_out)]
+	number_removed = df.shape[0] - df_changed.shape[0]
+	print("Removed" + str(number_removed) + "outliers from" + variable)
 
-    number_removed = df.shape[0] - df_out.shape[0]
-    print("Removed" + num + "outliers from" + variable)
+	return df_changed
+
 	
-    return df_changed
-
-	
-def create_graph(df, variable, column_title, y_label):
+def create_graph(df, variable, subject_variable, type, graph_type):
 	'''
 	Take a variable and create a line chart mapping that variable
 	against a dependent_variable, serious delinquency in the prior two years
@@ -124,15 +126,15 @@ def create_graph(df, variable, column_title, y_label):
 	Outputs:
 	Variable_chart: A matplotlib object of the resultant chart
 	'''
-	chart_size = (10, 5)
-	columns = [variable, column_title]
-	mean_variable = df[columns].groupby(variable).mean()
-	variable_chart = mean_variable.plot(kind = 'line',figsize = chart_size)
+	columns = [subject_variable, variable]
+	if type == 'mean':
+		var_plot = df[columns].groupby(subject_variable).mean()
+	elif type == 'total':
+		var_plot = df[columns].groupby(subject_variable).sum()
 	
-	plt.ylabel(ylabel)
-	plt.show()
-	
-	return variable_chart
+	graph = var_plot.plot(kind = graph_type, use_index = False, figsize = (10,5))
+
+	return graph
 
 def bin_gen(df, variable, label, fix_value):
 	'''
