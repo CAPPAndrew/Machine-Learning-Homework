@@ -35,6 +35,28 @@ def establish_grid():
 		}
 	
 	return classifiers
+
+def generate_binary_at_k(y_scores, k):
+    '''
+    Set first k% as 1, the rest as 0.
+    '''
+    cutoff_index = int(len(y_scores) * (k / 100.0))
+    test_predictions_binary = [1 if x < cutoff_index else 0 for x in range(len(y_scores))]
+	
+    return test_predictions_binary
+
+
+def scores_at_k(y_true, y_scores, k):
+    '''
+    For a given level of k, calculate corresponding
+    precision, recall, and f1 scores.
+    '''
+    preds_at_k = generate_binary_at_k(y_scores, k)
+    precision = precision_score(y_true, preds_at_k)
+    recall = recall_score(y_true, preds_at_k)
+    f1 = f1_score(y_true, preds_at_k)
+	
+    return precision, recall, f1
 	
 def clf_loop(x, y, models, grid, classifiers):
 	'''
@@ -45,12 +67,12 @@ def clf_loop(x, y, models, grid, classifiers):
 	models = list of models to use
 	'''
 	if models == 'all':
-		models = ['Forest', 'Tree', 'KNN', 'Boosted', 'Logit', 'SVM']
+		models = ['Forest', 'Tree', 'KNN', 'Boosted', 'Logit']
 	iterator = -1
     
-	x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2 , random_state = 12)
+	x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.4 , random_state = 12)
 	
-	results_df = pd.DataFrame(columns=('model_type','parameters', 'duration', 'accuracy','Average Precision Score', 'AUC ROC Score'))
+	results_df = pd.DataFrame(columns=('model_type','parameters', 'duration', 'accuracy', 'precision', 'recall', 'F1','Average Precision Score', 'AUC ROC Score', 'Precision, Recall and F1 at 5', 'Precision, Recall and F1 at 10', 'Precision, Recall and F1 at 20'))
 
 	
 	for index , classifier in enumerate([classifiers[x] for x in models]):
@@ -62,17 +84,27 @@ def clf_loop(x, y, models, grid, classifiers):
 				classifier.set_params(** x)
 
 				y_hat = classifier.fit(x_train, y_train.values.ravel()).predict_proba(x_test)[:,1]
+				y_hat_binary = y_hat.round()
 				
 				end = time.time()
 				
 				accuracy = classifier.score(x_test, y_test)
 				duration = end - start
 				
-				results_df.loc[iterator] = [models[index], x, duration, accuracy, average_precision_score(y_test, y_hat),
-				roc_auc_score(y_test, y_hat)]
+				y_hat_sorted, y_test_sorted = zip(*sorted(zip(y_hat_binary, y_test), reverse=True))
+
+				results_df.loc[iterator] = [models[index], x, duration, accuracy,
+				precision_score(y_test, y_hat_binary),
+				recall_score(y_test, y_hat_binary),
+				f1_score(y_test, y_hat_binary),
+				average_precision_score(y_test, y_hat),
+				roc_auc_score(y_test, y_hat),
+				scores_at_k(y_test_sorted, y_hat_sorted, 5.0),
+				scores_at_k(y_test_sorted, y_hat_sorted, 10.0),
+				scores_at_k(y_test_sorted, y_hat_sorted, 20.0),]
 
 				create_precision_recall_graph(y_test,y_hat, models[index], x)
-
+				
 			except IndexError:
 				continue
 				
